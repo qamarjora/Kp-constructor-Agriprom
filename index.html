@@ -776,7 +776,15 @@ function render(){
         </div>
         <div class="pc-body">
           <div class="pc-name">${p.name}</div>
-          <div class="pc-desc">${p.desc}</div>
+          <textarea class="custom-desc no-print" id="cdesc_${p.id}"
+            placeholder="Описание..."
+            oninput="saveDesc('cdesc_${p.id}',this.value)"
+            onclick="event.stopPropagation()"
+            style="width:100%;border:1px dashed transparent;border-radius:4px;padding:2px 4px;font-size:10px;color:var(--muted);resize:none;height:54px;outline:none;font-family:inherit;background:transparent;transition:.15s"
+            onfocus="this.style.background='var(--gray)';this.style.borderColor='var(--border)'"
+            onblur="this.style.background='transparent';this.style.borderColor='transparent'"
+            >${customDescs['cdesc_'+p.id]!==undefined?customDescs['cdesc_'+p.id]:p.desc}</textarea>
+          <div class="print-only" id="cdesc_${p.id}-print" style="font-size:10px;color:var(--muted);line-height:1.5">${customDescs['cdesc_'+p.id]!==undefined?customDescs['cdesc_'+p.id]:p.desc}</div>
         </div>
       </div>`;
     });
@@ -806,14 +814,35 @@ function render(){
     }
     allCustomRows.forEach(r=>{
       const descKey='desc_'+r.id;
+      const cPhoto=customPhotos['custom_'+r.id]||null;
       h+=`<div class="pc">
+        ${cPhoto
+          ?`<div class="pc-img-wrap">
+              <img src="${cPhoto}" alt="${r.name}" style="max-height:88px;max-width:100%;object-fit:contain;">
+              <div class="photo-overlay no-print">
+                <label class="photo-btn" title="Изменить фото">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Фото
+                  <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('custom_${r.id}',this)" onclick="event.stopPropagation()">
+                </label>
+                <button class="photo-btn del" onclick="deletePhoto('custom_${r.id}')" title="Удалить фото">✕</button>
+              </div>
+            </div>`
+          :`<div class="pc-img-wrap no-print" style="height:44px;justify-content:center">
+              <label class="photo-btn" style="font-size:10px;cursor:pointer">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Добавить фото
+                <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('custom_${r.id}',this)" onclick="event.stopPropagation()">
+              </label>
+            </div>`
+        }
         <div class="pc-body" style="padding:10px 12px">
           <div class="pc-name">${r.name||'—'}</div>
           <textarea class="custom-desc no-print" id="${descKey}"
             placeholder="Введите описание..."
             oninput="saveDesc('${descKey}',this.value)"
             onclick="event.stopPropagation()"
-            style="width:100%;border:1px dashed var(--border);border-radius:4px;padding:4px 6px;font-size:10px;color:var(--muted);resize:none;height:58px;outline:none;font-family:inherit;background:var(--gray);margin-top:4px">${customDescs[descKey]||''}</textarea>
+            style="width:100%;border:1px dashed var(--border);border-radius:4px;padding:4px 6px;font-size:10px;color:var(--muted);resize:none;height:54px;outline:none;font-family:inherit;background:var(--gray);margin-top:4px">${customDescs[descKey]||''}</textarea>
           <div class="print-only" id="${descKey}-print" style="font-size:10px;color:var(--muted);line-height:1.5;margin-top:4px">${customDescs[descKey]||''}</div>
         </div>
       </div>`;
@@ -847,6 +876,7 @@ function render(){
       <th class="c" style="width:70px">Кол-во</th>
       <th class="c" style="width:90px">Скидка</th>
       <th class="r" style="width:100px">Итого, EUR</th>
+      <th class="no-print" style="width:28px"></th>
     </tr></thead><tbody>`;
 
     let vTotal=0, num=1;
@@ -905,6 +935,11 @@ function render(){
           <span class="print-only" style="font-size:11px">${disc||0}%</span>
         </td>
         <td class="r" id="tc-${row.id}">${tc}</td>
+        <td class="no-print" style="width:28px;border:none;background:transparent;padding:0 4px">
+          <button onclick="deleteRow('${v.id}','${row.id}')" title="Удалить строку"
+            style="background:none;border:none;cursor:pointer;color:#ccc;font-size:16px;line-height:1;padding:2px;border-radius:4px;transition:.15s"
+            onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#ccc'">✕</button>
+        </td>
       </tr>
       ${variants.length>1?`<tr class="no-print" style="height:0"><td colspan="7" style="padding:0 8px 3px;border:none;text-align:right">
         <span style="font-size:10px;color:var(--muted)">Скопировать в:</span>
@@ -963,6 +998,33 @@ function addCustomRow(vid){
   setTimeout(()=>{const el=document.getElementById('rn-'+id);if(el)el.focus();},50);
 }
 
+
+function deleteRow(vid,rid){
+  // Find what product this row is
+  const v=variants.find(x=>x.id===vid);
+  if(!v)return;
+  const row=v.rows.find(r=>r.id===rid);
+  if(!row)return;
+
+  // If catalog row — remove from sel if no other variant has it
+  if(row.type==='catalog'){
+    const otherVariantsHaveIt=variants
+      .filter(vv=>vv.id!==vid)
+      .some(vv=>vv.rows.some(r=>r.type==='catalog'&&r.prodId===row.prodId));
+    if(!otherVariantsHaveIt){
+      // Check if ALL variants of this prod are being removed
+      const thisVariantRowsForProd=v.rows.filter(r=>r.type==='catalog'&&r.prodId===row.prodId);
+      if(thisVariantRowsForProd.length<=1){
+        sel.delete(row.prodId);
+        $('sel-cnt').textContent=sel.size;
+      }
+    }
+  }
+  // Remove row from variant
+  v.rows=v.rows.filter(r=>r.id!==rid);
+  renderList();
+  render();
+}
 
 function delRow(vid,rid){
   const v=variants.find(x=>x.id===vid);
