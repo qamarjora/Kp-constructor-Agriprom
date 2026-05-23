@@ -865,36 +865,83 @@ function render(){
     });
     h+='</div>';
   }
-  // ── Карточки: стандартные из каталога ──
-  cards('Оборудование для МТФ',eq);
-  cards('Добавки и расходники',sup);
-
-  // ── Карточки: эконом + кастомные (без дублей) ──
-  // Только eq и sup продукты показаны через cards()
-  const shownIds=new Set([...sel].filter(id=>
-    P.eq.find(p=>p.id===id)||P.sup.find(p=>p.id===id)
-  ));
-  const extraCards=[]; // {id, name, desc, type, rowId}
+  // ── Карточки: собираем всё ──────────────────────────────
+  const seenEco=new Set();
+  const seenCustom=new Set();
+  const ecoCards=[];
+  const customCards=[];
 
   variants.forEach(v=>{
     v.rows.forEach(r=>{
-      if(r.type==='catalog'){
-        // eco products from P.eco
-        const isEco=P.eco&&P.eco.find(p=>p.id===r.prodId);
-        if(isEco && !shownIds.has(r.prodId)){
-          shownIds.add(r.prodId);
-          extraCards.push({id:r.prodId, name:r.name, desc:r.desc||getProd(r.prodId)?.desc||'', type:'eco', rowId:r.id});
+      if(r.type==='catalog' && P.eco && P.eco.find(p=>p.id===r.prodId)){
+        if(!seenEco.has(r.prodId)){
+          seenEco.add(r.prodId);
+          ecoCards.push({id:r.prodId, name:r.name, desc:getProd(r.prodId)?.desc||'', type:'eco', rowId:r.id});
         }
-      } else if(r.type==='custom'){
-        // custom rows — deduplicate by row id (each row is unique)
-        if(r.name && !extraCards.find(x=>x.rowId===r.id)){
-          extraCards.push({id:'custom_'+r.id, name:r.name, desc:'', type:'custom', rowId:r.id});
-        }
+      } else if(r.type==='custom' && r.name && !seenCustom.has(r.id)){
+        seenCustom.add(r.id);
+        customCards.push({id:'custom_'+r.id, name:r.name, desc:'', type:'custom', rowId:r.id});
       }
     });
   });
 
-  const allCustomRows=extraCards; // keep name for existing code below
+  const allCustomRows=customCards;
+
+  // ── Оборудование для МТФ (eq + eco вместе) ──────────
+  if(eq.length>0||ecoCards.length>0){
+    h+=`<div class="sec-hdr">Оборудование для МТФ</div><div class="prod-grid">`;
+    eq.forEach(p=>{
+      const photo=customPhotos[p.id]||PHOTOS[p.id]||null;
+      h+=`<div class="pc">
+        <div class="pc-img-wrap${photo?'':' no-print'}">
+          ${photo?`<img src="${photo}" alt="${p.name}" style="max-height:88px;max-width:100%;object-fit:contain;">`
+            :'<div class="pc-ph">Фото продукта<br><span style="font-size:9px">(будет добавлено)</span></div>'}
+          <div class="photo-overlay no-print">
+            <label class="photo-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Фото<input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('${p.id}',this)" onclick="event.stopPropagation()"></label>
+            ${photo?`<button class="photo-btn del" onclick="deletePhoto('${p.id}')">✕</button>`:''}
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="pc-name">${p.name}</div>
+          <textarea class="custom-desc no-print" id="cdesc_${p.id}"
+            placeholder="Описание..." oninput="saveDesc('cdesc_${p.id}',this.value)" onclick="event.stopPropagation()"
+            style="width:100%;border:1px dashed transparent;border-radius:4px;padding:2px 4px;font-size:10px;color:var(--muted);resize:none;height:54px;outline:none;font-family:inherit;background:transparent;transition:.15s"
+            onfocus="this.style.background='var(--gray)';this.style.borderColor='var(--border)'"
+            onblur="this.style.background='transparent';this.style.borderColor='transparent'"
+            >${customDescs['cdesc_'+p.id]!==undefined?customDescs['cdesc_'+p.id]:p.desc}</textarea>
+          <div class="print-only" id="cdesc_${p.id}-print" style="font-size:10px;color:var(--muted);line-height:1.5">${customDescs['cdesc_'+p.id]!==undefined?customDescs['cdesc_'+p.id]:p.desc}</div>
+        </div>
+      </div>`;
+    });
+    ecoCards.forEach(card=>{
+      const cPhoto=customPhotos[card.id]||null;
+      const descKey='desc_'+card.rowId;
+      h+=`<div class="pc">
+        ${cPhoto
+          ?`<div class="pc-img-wrap"><img src="${cPhoto}" alt="${card.name}" style="max-height:88px;max-width:100%;object-fit:contain;">
+              <div class="photo-overlay no-print">
+                <label class="photo-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Фото<input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('${card.id}',this)" onclick="event.stopPropagation()"></label>
+                <button class="photo-btn del" onclick="deletePhoto('${card.id}')">✕</button>
+              </div></div>`
+          :`<div class="pc-img-wrap no-print" style="height:44px">
+              <label class="photo-btn" style="font-size:10px;cursor:pointer"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Добавить фото<input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('${card.id}',this)" onclick="event.stopPropagation()"></label></div>`}
+        <div class="pc-body" style="padding:10px 12px">
+          <div class="pc-name" id="card-name-${card.rowId}">${card.name}</div>
+          <textarea class="custom-desc no-print" id="${descKey}"
+            placeholder="Введите описание..." oninput="saveDesc('${descKey}',this.value)" onclick="event.stopPropagation()"
+            style="width:100%;border:1px dashed var(--border);border-radius:4px;padding:4px 6px;font-size:10px;color:var(--muted);resize:none;height:54px;outline:none;font-family:inherit;background:var(--gray);margin-top:4px">${customDescs[descKey]||''}</textarea>
+          <div class="print-only" id="${descKey}-print" style="font-size:10px;color:var(--muted);line-height:1.5;margin-top:4px">${customDescs[descKey]||''}</div>
+        </div>
+      </div>`;
+    });
+    h+='</div>';
+  }
+
+  // ── Добавки и расходники ─────────────────────────────
+  cards('Добавки и расходники',sup);
 
   if(allCustomRows.length>0){
     const hasGrid=sp.length>0;
