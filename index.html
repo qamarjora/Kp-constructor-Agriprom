@@ -780,7 +780,7 @@ function toggle(id){
     const p=getProd(id);
     if(!prices[id])prices[id]=p.price;
     qty[id]=1; units[id]=p.defUnit; disc[id]={type:'%',value:0};
-    // добавить только в незаблокированные варианты
+    // добавить только в незаблокированные варианты (работает для eq, sup и eco)
     variants.forEach(v=>{
       if(v.locked)return;
       const rid='r'+(++rowIdCounter);
@@ -865,54 +865,70 @@ function render(){
     });
     h+='</div>';
   }
+  // ── Карточки: стандартные из каталога ──
   cards('Оборудование для МТФ',eq);
   cards('Добавки и расходники',sup);
 
-  // ── Карточки доп. позиций ──
-  const allCustomRows=[];
+  // ── Карточки: эконом + кастомные (без дублей) ──
+  // Только eq и sup продукты показаны через cards()
+  const shownIds=new Set([...sel].filter(id=>
+    P.eq.find(p=>p.id===id)||P.sup.find(p=>p.id===id)
+  ));
+  const extraCards=[]; // {id, name, desc, type, rowId}
+
   variants.forEach(v=>{
     v.rows.forEach(r=>{
-      if(r.type==='custom' && r.name && !allCustomRows.find(x=>x.name===r.name)){
-        allCustomRows.push(r);
+      if(r.type==='catalog'){
+        // eco products from P.eco
+        const isEco=P.eco&&P.eco.find(p=>p.id===r.prodId);
+        if(isEco && !shownIds.has(r.prodId)){
+          shownIds.add(r.prodId);
+          extraCards.push({id:r.prodId, name:r.name, desc:r.desc||getProd(r.prodId)?.desc||'', type:'eco', rowId:r.id});
+        }
+      } else if(r.type==='custom'){
+        // custom rows — deduplicate by row id (each row is unique)
+        if(r.name && !extraCards.find(x=>x.rowId===r.id)){
+          extraCards.push({id:'custom_'+r.id, name:r.name, desc:'', type:'custom', rowId:r.id});
+        }
       }
     });
   });
+
+  const allCustomRows=extraCards; // keep name for existing code below
+
   if(allCustomRows.length>0){
-    // добавляем карточки доп. позиций в конец существующей сетки
-    // если уже были карточки — продолжаем ту же сетку
     const hasGrid=sp.length>0;
     if(!hasGrid) h+=`<div class="prod-grid">`;
     else{
-      // remove closing </div> of last grid to append
       const lastClose=h.lastIndexOf('</div>');
       h=h.substring(0,lastClose);
     }
-    allCustomRows.forEach(r=>{
-      const descKey='desc_'+r.id;
-      const cPhoto=customPhotos['custom_'+r.id]||null;
+    allCustomRows.forEach(card=>{
+      const descKey='desc_'+card.rowId;
+      const cPhoto=customPhotos[card.id]||null;
+      const isEco=card.type==='eco';
+      const ecoP=isEco?getProd(card.id):null;
       h+=`<div class="pc">
         ${cPhoto
           ?`<div class="pc-img-wrap">
-              <img src="${cPhoto}" alt="${r.name}" style="max-height:88px;max-width:100%;object-fit:contain;">
+              <img src="${cPhoto}" alt="${card.name}" style="max-height:88px;max-width:100%;object-fit:contain;">
               <div class="photo-overlay no-print">
-                <label class="photo-btn" title="Изменить фото">
+                <label class="photo-btn">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Фото
-                  <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('custom_${r.id}',this)" onclick="event.stopPropagation()">
+                  Фото<input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('${card.id}',this)" onclick="event.stopPropagation()">
                 </label>
-                <button class="photo-btn del" onclick="deletePhoto('custom_${r.id}')" title="Удалить фото">✕</button>
+                <button class="photo-btn del" onclick="deletePhoto('${card.id}')">✕</button>
               </div>
             </div>`
-          :`<div class="pc-img-wrap no-print" style="height:44px;justify-content:center">
+          :`<div class="pc-img-wrap no-print" style="height:44px">
               <label class="photo-btn" style="font-size:10px;cursor:pointer">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Добавить фото
-                <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('custom_${r.id}',this)" onclick="event.stopPropagation()">
+                Добавить фото<input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('${card.id}',this)" onclick="event.stopPropagation()">
               </label>
             </div>`
         }
         <div class="pc-body" style="padding:10px 12px">
-          <div class="pc-name">${r.name||'—'}</div>
+          <div class="pc-name" id="card-name-${card.rowId}">${card.name||'—'}</div>
           <textarea class="custom-desc no-print" id="${descKey}"
             placeholder="Введите описание..."
             oninput="saveDesc('${descKey}',this.value)"
@@ -925,7 +941,7 @@ function render(){
     h+='</div>';
   }
 
-  // ── ВАРИАНТЫ РАСЧЁТА ──
+    // ── ВАРИАНТЫ РАСЧЁТА ──
   if(sp.length>0||variants.some(v=>v.rows.length>0)){
     h+=`<div class="sec-hdr" style="margin-top:24px">Расчёт стоимости</div>`;
   }
@@ -1157,6 +1173,13 @@ function updateRow(vid,rid,field,val){
     r[field]=parseFloat(String(val).replace(',','.'))||0;
   } else {
     r[field]=val;
+  }
+  // Sync card name if name changed
+  if(field==='name'){
+    const cardNameEl=document.getElementById('card-name-'+rid);
+    if(cardNameEl)cardNameEl.textContent=val||'—';
+    // also update sidebar if eco product
+    renderList();
   }
   recalcVariantRow(vid,rid);
 }
