@@ -1680,6 +1680,7 @@ try{
 renderList();
 $('kp-date').textContent=today();
 
+
 // Invoice
 var INV_KEY='agriprom_inv7';
 function ginv(id){var el=document.getElementById('inv-'+id);return el?el.value:'';}
@@ -1825,6 +1826,7 @@ function generateInvoicePDF(){
   doc.save('Invoice_'+fn+'_'+(ginv('ordnum')||'inv')+'.pdf');
   closeInvoiceModal();
 }
+
 </script>
 </body>
 </html>
