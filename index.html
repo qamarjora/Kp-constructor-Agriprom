@@ -279,14 +279,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
 .btn-invoice svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2}
 .inv-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}
 .inv-modal-overlay.open{display:flex}
-.inv-modal{background:#fff;border-radius:12px;padding:28px 32px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 48px rgba(21,44,98,.22)}
-.inv-modal h2{font-size:17px;color:var(--navy);margin-bottom:6px;font-weight:700}
-.inv-section{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 8px;padding-bottom:4px;border-bottom:2px solid var(--navy)}
-.inv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:4px}
-.inv-grid label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px}
-.inv-grid input,.inv-grid select{width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;outline:none}
-.inv-grid input:focus,.inv-grid select:focus{border-color:var(--navy)}
-.inv-grid .full{grid-column:1/-1}
+.inv-modal{background:#fff;border-radius:12px;padding:28px 32px;width:460px;max-width:95vw;box-shadow:0 8px 48px rgba(21,44,98,.22)}
+.inv-modal h2{font-size:17px;color:var(--navy);margin-bottom:10px;font-weight:700}
 .inv-modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
 .inv-modal-btns button{padding:9px 22px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none}
 .inv-gen-btn{background:var(--navy);color:#fff}
@@ -378,11 +372,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
         <div class="fl no-print"><label>Номер заказа</label><input id="f-ordnum" placeholder="2025-001"></div>
         <div class="fl no-print"><label>Покупатель</label><input id="f-buyer"></div>
         <div class="fl no-print"><label>Номер дебитора</label><input id="f-debnum"></div>
-        <div class="fl no-print"><label>Референс клиента</label><input id="f-ref"></div>
+        <div class="fl no-print"><label>Референс</label><input id="f-ref"></div>
         <div class="fl no-print"><label>Продавец</label><input id="f-seller"></div>
         <div class="fl no-print"><label>Описание / Truck</label><input id="f-truck"></div>
         <div class="fl no-print"><label>Условия поставки</label><input id="f-delivery" value="DAP"></div>
-        <div class="fl no-print"><label>Адрес доставки</label><input id="f-address"></div>
+        <div class="fl no-print"><label>Адрес</label><input id="f-address"></div>
         <div class="fl no-print"><label>Примечания</label><input id="f-invnotes"></div>
         <div class="fl no-print"><label>БИН</label><input id="f-bin" placeholder="123456789012"></div>
         <div class="fl no-print"><label>Банк</label><input id="f-bank"></div>
@@ -390,6 +384,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
         <div class="fl no-print"><label>БИК</label><input id="f-bik"></div>
         <div class="fl no-print"><label>NDS %</label><input id="f-inv-vat" type="number" value="0" min="0" max="100"></div>
         <div class="fl no-print"><label>Валюта</label><select id="f-inv-currency"><option value="EUR">EUR</option><option value="USD">USD</option><option value="KZT">KZT</option></select></div>
+
       </div>
       <div class="sb-hdr">Продукты <span class="badge" id="sel-cnt">0</span></div>
       <div class="hint">Выберите продукты — они добавятся в таблицу</div>
@@ -1569,7 +1564,80 @@ function showHistory(){
         <div class="history-item-title">⭐ ${t.label}</div>
         <div class="history-item-meta">Продуктов: ${(t.sel||[]).length} · Вариантов: ${(t.variants||[]).length}</div>
         <div class="history-item-btns">
-          <button class="h-btn" onclick="loadTemplate(${i})">Загрузить</button>
+          <button class="h-btn"
+
+// ── Invoice ──────────────────────────────────────
+function gf(id){var el=document.getElementById(id);return el?el.value:'';}
+function openInvoiceModal(){
+  var modal=document.getElementById('invoiceModal');
+  if(!modal){alert('Modal not found!');return;}
+  try{var sv=JSON.parse(localStorage.getItem('agriprom_inv8')||'{}');['f-bin','f-bank','f-iik','f-bik'].forEach(function(f){var el=document.getElementById(f);if(el&&sv[f])el.value=sv[f];});}catch(e){}
+  if(!gf('f-seller')){var mg=document.getElementById('f-mgr');if(mg){var sel=document.getElementById('f-seller');if(sel)sel.value=mg.value;}}
+  if(!gf('f-buyer')){var fm=document.getElementById('f-farm');if(fm){var buy=document.getElementById('f-buyer');if(buy)buy.value=fm.value;}}
+  modal.classList.add('open');
+  modal.onclick=function(e){if(e.target===this)closeInvoiceModal();};
+}
+function closeInvoiceModal(){var m=document.getElementById('invoiceModal');if(m)m.classList.remove('open');}
+function printInvoice(){
+  closeInvoiceModal();
+  try{var req={};['f-bin','f-bank','f-iik','f-bik'].forEach(function(f){req[f]=gf(f);});localStorage.setItem('agriprom_inv8',JSON.stringify(req));}catch(e){}
+  var cur=gf('f-inv-currency')||'EUR';
+  var vatR=parseFloat(gf('f-inv-vat'))||0;
+  var f2=function(n){return parseFloat(n||0).toFixed(2);};
+  var rows=[];
+  variants.forEach(function(v){v.rows.forEach(function(r){var p=parseFloat(r.price)||0,q=parseInt(r.qty)||1,d=parseFloat(r.discVal)||0,t=d>=100?0:p*q*(1-d/100);if(r.name)rows.push({name:r.name,qty:q,price:p,disc:d,total:t});});});
+  var sub=rows.reduce(function(s,r){return s+r.total;},0),vatA=sub*vatR/100,grand=sub+vatA;
+  var today=new Date().toLocaleDateString('ru-RU');
+  var rh='';
+  for(var i=0;i<20;i++){var r=rows[i];if(r){rh+='<tr><td class="c">'+(i+1)+'</td><td>'+r.name+'</td><td class="c">'+r.qty+'</td><td class="r">'+cur+' '+f2(r.price)+'</td><td class="c">'+vatR+'%</td><td class="c">'+(r.disc||0)+'%</td><td class="r">'+(r.disc>=100?'FREE':cur+' '+f2(r.total))+'</td></tr>';}else{rh+='<tr><td class="c">'+(i+1)+'</td><td></td><td></td><td></td><td class="c">'+vatR+'%</td><td class="c">0%</td><td></td></tr>';}}
+  var vr=vatR>0?'<tr style="background:#e0e6f5"><td colspan="6" style="text-align:right"><b>NDS ('+vatR+'%):</b></td><td class="r">'+cur+' '+f2(vatA)+'</td></tr>':'';
+  var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice</title>'
+    +'<style>body{font-family:Arial,sans-serif;font-size:11px;margin:20px;color:#111}'
+    +'.hdr{display:flex;justify-content:space-between;margin-bottom:14px}'
+    +'.logo{background:#152c62;color:#fff;padding:10px 14px;border-radius:3px}'
+    +'.logo b{font-size:15px;display:block}.logo small{font-size:8px;opacity:.7}'
+    +'.req{text-align:right;font-size:10px;line-height:1.8}'
+    +'h1{text-align:center;font-size:15px;color:#152c62;margin:10px 0;font-weight:700}'
+    +'.info{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ccc;margin-bottom:12px;font-size:10px}'
+    +'.ic{padding:4px 7px;border:1px solid #e5e5e5}.ic b{color:#152c62}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:10px}'
+    +'th{background:#152c62;color:#fff;padding:5px 6px}'
+    +'td{padding:4px 6px;border-bottom:1px solid #eee}'
+    +'tr:nth-child(even) td{background:#f8f9ff}'
+    +'.c{text-align:center}.r{text-align:right}'
+    +'.tots{margin-left:auto;width:260px;border-collapse:collapse;font-size:10px}'
+    +'.tots td{padding:4px 8px;border:1px solid #ddd}'
+    +'.grand{background:#152c62;color:#fff;font-weight:700}'
+    +'.pay{margin-top:12px;font-size:10px;border-top:1px solid #ddd;padding-top:8px}'
+    +'.foot{margin-top:14px;font-size:8px;color:#aaa;text-align:center;font-style:italic}'
+    +'@page{size:A4;margin:15mm}</style></head><body>'
+    +'<div class="hdr"><div class="logo"><b>AGRIPROM</b><small>total cow comfort</small></div>'
+    +'<div class="req"><b>TOO "Agriprom"</b><br>BIN: '+gf('f-bin')+'<br>Bank: '+gf('f-bank')+'<br>IIK: '+gf('f-iik')+'<br>BIK: '+gf('f-bik')+'</div></div>'
+    +'<h1>SCHET-FAKTURA / INVOICE</h1>'
+    +'<div class="info">'
+    +'<div class="ic"><b>Nomer zakaza:</b> '+gf('f-ordnum')+'</div><div class="ic"><b>Pokupatel:</b> '+gf('f-buyer')+'</div>'
+    +'<div class="ic"><b>Data:</b> '+today+'</div><div class="ic"><b>Nomer debitora:</b> '+gf('f-debnum')+'</div>'
+    +'<div class="ic"><b>Prodavets:</b> '+gf('f-seller')+'</div><div class="ic"><b>Referens:</b> '+gf('f-ref')+'</div>'
+    +'<div class="ic"><b>Opisanie/Truck:</b> '+gf('f-truck')+'</div><div class="ic"><b>Usloviya:</b> '+gf('f-delivery')+'</div>'
+    +'<div class="ic" style="grid-column:1/-1"><b>Adres:</b> '+gf('f-address')+'&nbsp;&nbsp;<b>Note:</b> '+gf('f-invnotes')+'</div>'
+    +'</div>'
+    +'<table><tr><th class="c" style="width:24px">#</th><th>Naimenovanie</th>'
+    +'<th class="c" style="width:36px">Qty</th><th class="r" style="width:72px">Price</th>'
+    +'<th class="c" style="width:34px">NDS</th><th class="c" style="width:40px">Disc</th>'
+    +'<th class="r" style="width:72px">Summa ('+cur+')</th></tr>'+rh+'</table>'
+    +'<table class="tots"><tr><td style="text-align:right"><b>Itogo bez NDS:</b></td><td class="r">'+cur+' '+f2(sub)+'</td></tr>'
+    +vr+'<tr class="grand"><td style="text-align:right">ITOGO K OPLATE:</td><td class="r">'+cur+' '+f2(grand)+'</td></tr></table>'
+    +'<div class="pay"><b>Rekvizity:</b> Bank: '+gf('f-bank')+' IIK: '+gf('f-iik')+' BIK: '+gf('f-bik')+'<br>'
+    +'Usloviya: Predoplata / Prepayment &nbsp; Incoterms 2020: '+(gf('f-delivery')||'DAP')+'</div>'
+    +'<div class="foot">Na vse nashi tranzaktsii rasprostranayutsya obshchie usloviya zaregistrirovannye v Torgovo-promyshlennoy palate.</div>'
+    +'</body></html>';
+  var w=window.open('','_blank','width=860,height=680');
+  if(!w){alert('Popup blocked! Please allow popups for this page.');return;}
+  w.document.write(doc);w.document.close();w.focus();
+  setTimeout(function(){w.print();},600);
+}
+
+ onclick="loadTemplate(${i})">Загрузить</button>
           <button class="h-btn danger" onclick="deleteTemplate(${i})">Удалить</button>
         </div>
       </div>`;
@@ -1651,9 +1719,7 @@ function doPrint(){
   </head><body>
     ${kpHTML}
     <script>window.onload=function(){window.print();};<\/script>
-  
-<div class="inv-modal-overlay" id="invoiceModal"><div class="inv-modal"><h2>Invoice PDF</h2><p style="font-size:13px;color:var(--muted);margin-bottom:16px">Данные берутся из сайдбара. Актуально ли все поля?</p><div class="inv-modal-btns"><button class="inv-cancel-btn" onclick="closeInvoiceModal()">Отмена</button><button class="inv-gen-btn" onclick="printInvoice()">Создать PDF</button></div></div></div>
-</body></html>`;
+  </body></html>`;
   const blob=new Blob([printDoc],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const win=window.open(url,'_blank');
@@ -1683,160 +1749,8 @@ try{
 }catch(e){}
 renderList();
 $('kp-date').textContent=today();
-
-
-// ── Invoice via window.print() ────────────────────────────
-var INV_STORAGE = 'agriprom_inv_req';
-
-function gf(id) {
-  var el = document.getElementById(id);
-  return el ? (el.value || '') : '';
-}
-
-function openInvoiceModal() {
-  // restore saved requisites
-  try {
-    var saved = JSON.parse(localStorage.getItem(INV_STORAGE) || '{}');
-    var fields = ['f-bin','f-bank','f-iik','f-bik'];
-    fields.forEach(function(f) {
-      var el = document.getElementById(f);
-      if (el && saved[f]) el.value = saved[f];
-    });
-  } catch(e) {}
-  // fallback seller from mgr
-  if (!gf('f-seller')) {
-    var mg = document.getElementById('f-mgr');
-    if (mg) { var sel = document.getElementById('f-seller'); if (sel) sel.value = mg.value; }
-  }
-  // fallback buyer from farm
-  if (!gf('f-buyer')) {
-    var fm = document.getElementById('f-farm');
-    if (fm) { var buy = document.getElementById('f-buyer'); if (buy) buy.value = fm.value; }
-  }
-  document.getElementById('invoiceModal').classList.add('open');
-  document.getElementById('invoiceModal').onclick = function(e) {
-    if (e.target === this) closeInvoiceModal();
-  };
-}
-
-function closeInvoiceModal() {
-  document.getElementById('invoiceModal').classList.remove('open');
-}
-
-function printInvoice() {
-  closeInvoiceModal();
-
-  // save requisites
-  try {
-    var req = {};
-    ['f-bin','f-bank','f-iik','f-bik'].forEach(function(f) {
-      req[f] = gf(f);
-    });
-    localStorage.setItem(INV_STORAGE, JSON.stringify(req));
-  } catch(e) {}
-
-  // collect data
-  var cur = gf('f-inv-currency') || 'EUR';
-  var vatR = parseFloat(gf('f-inv-vat')) || 0;
-  var fmt2 = function(n) { return parseFloat(n || 0).toFixed(2); };
-
-  var rows = [];
-  variants.forEach(function(v) {
-    v.rows.forEach(function(r) {
-      var p = parseFloat(r.price) || 0;
-      var q = parseInt(r.qty) || 1;
-      var d = parseFloat(r.discVal) || 0;
-      var t = d >= 100 ? 0 : p * q * (1 - d / 100);
-      if (r.name) rows.push({ name: r.name, qty: q, price: p, disc: d, total: t });
-    });
-  });
-
-  var sub = rows.reduce(function(s, r) { return s + r.total; }, 0);
-  var vatA = sub * vatR / 100;
-  var grand = sub + vatA;
-  var today = new Date().toLocaleDateString('ru-RU');
-
-  // build rows HTML
-  var rowsHtml = '';
-  for (var i = 0; i < 20; i++) {
-    var r = rows[i];
-    if (r) {
-      var disc = r.disc > 0 ? r.disc + '%' : '0%';
-      var total = r.disc >= 100 ? 'FREE' : (cur + ' ' + fmt2(r.total));
-      rowsHtml += '<tr><td>' + (i+1) + '</td><td class="name">' + r.name + '</td><td>' + r.qty + '</td><td>' + cur + ' ' + fmt2(r.price) + '</td><td>' + vatR + '%</td><td>' + disc + '</td><td>' + total + '</td></tr>';
-    } else {
-      rowsHtml += '<tr><td>' + (i+1) + '</td><td></td><td></td><td></td><td>' + vatR + '%</td><td>0%</td><td></td></tr>';
-    }
-  }
-
-  var vatRow = vatR > 0 ? '<tr class="vat"><td colspan="6" style="text-align:right"><b>NDS (' + vatR + '%):</b></td><td>' + cur + ' ' + fmt2(vatA) + '</td></tr>' : '';
-
-  var invoiceHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    + '<title>Invoice</title>'
-    + '<style>'
-    + 'body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0;padding:20px}'
-    + '.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}'
-    + '.logo-box{background:#152c62;color:#fff;padding:10px 16px;border-radius:4px}'
-    + '.logo-box .big{font-size:16px;font-weight:700;letter-spacing:1px}'
-    + '.logo-box .sub{font-size:8px;opacity:.8}'
-    + '.req{text-align:right;font-size:10px;line-height:1.7}'
-    + '.req b{font-size:11px}'
-    + 'h1{text-align:center;font-size:16px;font-weight:700;color:#152c62;margin:12px 0}'
-    + '.info-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ddd;margin-bottom:14px}'
-    + '.info-cell{padding:4px 8px;border:1px solid #eee;font-size:10px}'
-    + '.info-cell b{color:#152c62}'
-    + 'table{width:100%;border-collapse:collapse;margin-bottom:8px}'
-    + 'th{background:#152c62;color:#fff;padding:5px 6px;font-size:10px;text-align:left}'
-    + 'th.r,td.r{text-align:right}'
-    + 'th.c,td.c{text-align:center}'
-    + 'td{padding:4px 6px;border-bottom:1px solid #eee;font-size:10px}'
-    + 'td.name{max-width:200px}'
-    + 'tr:nth-child(even){background:#f8f9ff}'
-    + '.totals{margin-left:auto;width:280px;border-collapse:collapse}'
-    + '.totals td{padding:4px 8px;border:1px solid #ddd;font-size:10px}'
-    + '.totals .hl{background:#152c62;color:#fff;font-weight:700}'
-    + '.totals .sub{background:#e0e6f5}'
-    + '.pay{margin-top:14px;font-size:10px;border-top:1px solid #ddd;padding-top:8px}'
-    + '.footer{margin-top:16px;font-size:8px;color:#999;text-align:center;font-style:italic;border-top:1px solid #eee;padding-top:8px}'
-    + '@media print{body{padding:10px}button{display:none}}'
-    + '</style></head><body>'
-    + '<div class="header">'
-    + '<div class="logo-box"><div class="big">AGRIPROM</div><div class="sub">total cow comfort</div></div>'
-    + '<div class="req"><b>TOO "Agriprom"</b><br>BIN: ' + gf('f-bin') + '<br>Bank: ' + gf('f-bank') + '<br>IIK: ' + gf('f-iik') + '<br>BIK: ' + gf('f-bik') + '</div>'
-    + '</div>'
-    + '<h1>SCHET-FAKTURA / INVOICE</h1>'
-    + '<div class="info-grid">'
-    + '<div class="info-cell"><b>Nomer zakaza:</b> ' + gf('f-ordnum') + '</div>'
-    + '<div class="info-cell"><b>Pokupatel:</b> ' + gf('f-buyer') + '</div>'
-    + '<div class="info-cell"><b>Data:</b> ' + today + '</div>'
-    + '<div class="info-cell"><b>Nomer debitora:</b> ' + gf('f-debnum') + '</div>'
-    + '<div class="info-cell"><b>Prodavets:</b> ' + gf('f-seller') + '</div>'
-    + '<div class="info-cell"><b>Referens klienta:</b> ' + gf('f-ref') + '</div>'
-    + '<div class="info-cell"><b>Opisanie/Truck:</b> ' + gf('f-truck') + '</div>'
-    + '<div class="info-cell"><b>Usloviya postavki:</b> ' + gf('f-delivery') + '</div>'
-    + '<div class="info-cell" style="grid-column:1/-1"><b>Adres dostavki:</b> ' + gf('f-address') + '&nbsp;&nbsp;&nbsp;<b>Primechaniya:</b> ' + gf('f-invnotes') + '</div>'
-    + '</div>'
-    + '<table>'
-    + '<tr><th style="width:28px">&#8470;</th><th>Naimenovanie / Opisanie tovara</th><th class="c" style="width:40px">Qty</th><th class="r" style="width:80px">Price (' + cur + ')</th><th class="c" style="width:36px">NDS</th><th class="c" style="width:44px">Skidka</th><th class="r" style="width:80px">Summa (' + cur + ')</th></tr>'
-    + rowsHtml
-    + '</table>'
-    + '<table class="totals">'
-    + '<tr><td style="text-align:right"><b>Itogo bez NDS:</b></td><td>' + cur + ' ' + fmt2(sub) + '</td></tr>'
-    + vatRow
-    + '<tr class="hl"><td style="text-align:right">ITOGO K OPLATE (' + cur + '):</td><td>' + cur + ' ' + fmt2(grand) + '</td></tr>'
-    + '</table>'
-    + '<div class="pay"><b>Rekvizity dlya oplaty:</b> Bank: ' + gf('f-bank') + ' &nbsp; IIK: ' + gf('f-iik') + ' &nbsp; BIK: ' + gf('f-bik') + '<br>'
-    + 'Usloviya oplaty: Predoplata / Prepayment in advance &nbsp;&nbsp; Incoterms 2020: ' + (gf('f-delivery') || 'DAP') + '</div>'
-    + '<div class="footer">Na vse nashi tranzaktsii rasprostranayutsya obshchie usloviya zaregistrirovannye v Torgovo-promyshlennoy palate.</div>'
-    + '</body></html>';
-
-  var w = window.open('', '_blank', 'width=900,height=700');
-  w.document.write(invoiceHtml);
-  w.document.close();
-  w.focus();
-  setTimeout(function() { w.print(); }, 800);
-}
-
 </script>
+
+<div class="inv-modal-overlay" id="invoiceModal"><div class="inv-modal"><h2>Invoice PDF</h2><p style="font-size:13px;color:var(--muted);margin-bottom:16px">Данные из сайдбара. Всё заполнено?</p><div class="inv-modal-btns"><button class="inv-cancel-btn" onclick="closeInvoiceModal()">Отмена</button><button class="inv-gen-btn" onclick="printInvoice()">Создать PDF</button></div></div></div>
 </body>
 </html>
