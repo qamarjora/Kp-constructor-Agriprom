@@ -292,8 +292,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
 .inv-gen-btn{background:var(--navy);color:#fff}
 .inv-cancel-btn{background:var(--gray);color:var(--navy);border:1px solid var(--border)!important}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -318,13 +316,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
     <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
     Сохранить PDF
   </button>
-  <button class="btn-invoice" onclick="(function(){
-  var errs=[];
-  try{ var x=openInvoiceModal; errs.push('fn:'+typeof x); x(); }
-  catch(e){ errs.push('ERR:'+e.message); alert('ERROR: '+e.message+'
-
-Stack: '+e.stack.split('\n').slice(0,3).join('|')); }
-})()">
+  <button class="btn-invoice" onclick="openInvoiceModal()">
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg>
     Invoice PDF
   </button>
@@ -392,6 +384,12 @@ Stack: '+e.stack.split('\n').slice(0,3).join('|')); }
         <div class="fl no-print"><label>Условия поставки</label><input id="f-delivery" value="DAP"></div>
         <div class="fl no-print"><label>Адрес доставки</label><input id="f-address"></div>
         <div class="fl no-print"><label>Примечания</label><input id="f-invnotes"></div>
+        <div class="fl no-print"><label>БИН</label><input id="f-bin" placeholder="123456789012"></div>
+        <div class="fl no-print"><label>Банк</label><input id="f-bank"></div>
+        <div class="fl no-print"><label>ИИК</label><input id="f-iik"></div>
+        <div class="fl no-print"><label>БИК</label><input id="f-bik"></div>
+        <div class="fl no-print"><label>NDS %</label><input id="f-inv-vat" type="number" value="0" min="0" max="100"></div>
+        <div class="fl no-print"><label>Валюта</label><select id="f-inv-currency"><option value="EUR">EUR</option><option value="USD">USD</option><option value="KZT">KZT</option></select></div>
       </div>
       <div class="sb-hdr">Продукты <span class="badge" id="sel-cnt">0</span></div>
       <div class="hint">Выберите продукты — они добавятся в таблицу</div>
@@ -1654,7 +1652,7 @@ function doPrint(){
     ${kpHTML}
     <script>window.onload=function(){window.print();};<\/script>
   
-<div class="inv-modal-overlay" id="invoiceModal"><div class="inv-modal"><h2>Invoice PDF</h2><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Данные из сайдбара</div><div class="inv-section">Реквизиты Agriprom</div><div class="inv-grid"><div><label>БИН</label><input id="inv-bin" placeholder="123456789012"></div><div><label>Банк</label><input id="inv-bank"></div><div><label>ИИК</label><input id="inv-iik"></div><div><label>БИК</label><input id="inv-bik"></div></div><div class="inv-section">Данные документа</div><div class="inv-grid"><div><label>Номер заказа</label><input id="inv-ordnum"></div><div><label>Покупатель</label><input id="inv-buyer"></div><div><label>Дата</label><input id="inv-date"></div><div><label>Номер дебитора</label><input id="inv-debnum"></div><div><label>Продавец</label><input id="inv-seller"></div><div><label>Референс</label><input id="inv-ref"></div><div class="full"><label>Описание / Truck</label><input id="inv-truck"></div><div><label>Условия поставки</label><input id="inv-delivery" value="DAP"></div><div><label>NDS %</label><input id="inv-vat" type="number" value="0" min="0" max="100"></div><div class="full"><label>Адрес</label><input id="inv-address"></div><div class="full"><label>Примечания</label><input id="inv-notes"></div><div><label>Валюта</label><select id="inv-currency"><option value="EUR">EUR</option><option value="USD">USD</option><option value="KZT">KZT</option></select></div></div><div class="inv-modal-btns"><button class="inv-cancel-btn" onclick="closeInvoiceModal()">Отмена</button><button class="inv-gen-btn" onclick="generateInvoicePDF()">Создать PDF</button></div></div></div>
+<div class="inv-modal-overlay" id="invoiceModal"><div class="inv-modal"><h2>Invoice PDF</h2><p style="font-size:13px;color:var(--muted);margin-bottom:16px">Данные берутся из сайдбара. Актуально ли все поля?</p><div class="inv-modal-btns"><button class="inv-cancel-btn" onclick="closeInvoiceModal()">Отмена</button><button class="inv-gen-btn" onclick="printInvoice()">Создать PDF</button></div></div></div>
 </body></html>`;
   const blob=new Blob([printDoc],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
@@ -1687,150 +1685,156 @@ renderList();
 $('kp-date').textContent=today();
 
 
-// Invoice
-var INV_KEY='agriprom_inv7';
-function ginv(id){var el=document.getElementById('inv-'+id);return el?el.value:'';}
-function openInvoiceModal(){
-  try{
-    var sv=JSON.parse(localStorage.getItem(INV_KEY)||'{}');
-    ['bin','bank','iik','bik'].forEach(function(f){
-      var el=document.getElementById('inv-'+f);
-      if(el&&sv[f])el.value=sv[f];
-    });
-  }catch(e){}
-  var pull={ordnum:'f-ordnum',buyer:'f-buyer',debnum:'f-debnum',ref:'f-ref',
-            seller:'f-seller',delivery:'f-delivery',truck:'f-truck',
-            address:'f-address',notes:'f-invnotes',vat:'f-vat'};
-  Object.keys(pull).forEach(function(k){
-    var d=document.getElementById('inv-'+k),s=document.getElementById(pull[k]);
-    if(d&&s)d.value=s.value;
-  });
-  var se=document.getElementById('inv-seller');
-  if(se&&!se.value){var mg=document.getElementById('f-mgr');if(mg)se.value=mg.value;}
-  var be=document.getElementById('inv-buyer');
-  if(be&&!be.value){var fm=document.getElementById('f-farm');if(fm)be.value=fm.value;}
-  var de=document.getElementById('inv-date');
-  if(de&&!de.value)de.value=new Date().toLocaleDateString('ru-RU');
-  var modal=document.getElementById('invoiceModal');
-  modal.classList.add('open');
-  modal.onclick=function(e){if(e.target===this)closeInvoiceModal();};
+// ── Invoice via window.print() ────────────────────────────
+var INV_STORAGE = 'agriprom_inv_req';
+
+function gf(id) {
+  var el = document.getElementById(id);
+  return el ? (el.value || '') : '';
 }
-function closeInvoiceModal(){
+
+function openInvoiceModal() {
+  // restore saved requisites
+  try {
+    var saved = JSON.parse(localStorage.getItem(INV_STORAGE) || '{}');
+    var fields = ['f-bin','f-bank','f-iik','f-bik'];
+    fields.forEach(function(f) {
+      var el = document.getElementById(f);
+      if (el && saved[f]) el.value = saved[f];
+    });
+  } catch(e) {}
+  // fallback seller from mgr
+  if (!gf('f-seller')) {
+    var mg = document.getElementById('f-mgr');
+    if (mg) { var sel = document.getElementById('f-seller'); if (sel) sel.value = mg.value; }
+  }
+  // fallback buyer from farm
+  if (!gf('f-buyer')) {
+    var fm = document.getElementById('f-farm');
+    if (fm) { var buy = document.getElementById('f-buyer'); if (buy) buy.value = fm.value; }
+  }
+  document.getElementById('invoiceModal').classList.add('open');
+  document.getElementById('invoiceModal').onclick = function(e) {
+    if (e.target === this) closeInvoiceModal();
+  };
+}
+
+function closeInvoiceModal() {
   document.getElementById('invoiceModal').classList.remove('open');
 }
-function generateInvoicePDF(){
-  try{
-    var req={};
-    ['bin','bank','iik','bik'].forEach(function(f){
-      var el=document.getElementById('inv-'+f);if(el)req[f]=el.value;
-    });
-    localStorage.setItem(INV_KEY,JSON.stringify(req));
-  }catch(e){}
-  var cur=ginv('currency')||'EUR';
-  var vatR=parseFloat(ginv('vat'))||0;
-  var f2=function(n){return parseFloat(n||0).toFixed(2);};
-  var rows=[];
-  variants.forEach(function(v){
-    v.rows.forEach(function(r){
-      var p=parseFloat(r.price)||0,q=parseInt(r.qty)||1,d=parseFloat(r.discVal)||0;
-      var t=d>=100?0:p*q*(1-d/100);
-      rows.push({name:r.name||'',qty:q,price:p,disc:d,total:t});
-    });
-  });
-  var sub=rows.reduce(function(s,r){return s+r.total;},0);
-  var vatA=sub*vatR/100;
-  var grand=sub+vatA;
-  var JC=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
-  if(!JC){alert('jsPDF not loaded. Check internet connection.');return;}
-  var doc=new JC({orientation:'portrait',unit:'mm',format:'a4'});
-  var W=210,M=14,y=14;
-  doc.setFillColor(21,44,98);doc.roundedRect(M,y,55,18,2,2,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(13);
-  doc.text('AGRIPROM',M+4,y+8);
-  doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.text('total cow comfort',M+4,y+14);
-  doc.setTextColor(20,20,20);doc.setFont('helvetica','bold');doc.setFontSize(9);
-  doc.text('TOO "Agriprom"',W-M,y+4,{align:'right'});
-  doc.setFont('helvetica','normal');doc.setFontSize(7.5);
-  ['BIN: '+ginv('bin'),'Bank: '+ginv('bank'),'IIK: '+ginv('iik'),'BIK: '+ginv('bik')]
-    .forEach(function(l,i){doc.text(l,W-M,y+9+i*3.8,{align:'right'});});
-  y+=26;
-  doc.setFontSize(15);doc.setFont('helvetica','bold');doc.setTextColor(21,44,98);
-  doc.text('SCHET-FAKTURA / INVOICE',W/2,y,{align:'center'});y+=9;
-  var colW=(W-M*2)/2;
-  [['Nomer zakaza',ginv('ordnum'),'Pokupatel',ginv('buyer')],
-   ['Data',ginv('date'),'Nomer debitora',ginv('debnum')],
-   ['Prodavets',ginv('seller'),'Referens klienta',ginv('ref')],
-   ['Opisanie/Truck',ginv('truck'),'Usloviya postavki',ginv('delivery')],
-   ['Adres dostavki',ginv('address'),'Primechaniya',ginv('notes')]
-  ].forEach(function(row){
-    doc.setFillColor(244,246,251);
-    doc.rect(M,y,colW,5.8,'F');doc.rect(M+colW,y,colW,5.8,'F');
-    doc.setDrawColor(210,215,228);doc.rect(M,y,colW,5.8);doc.rect(M+colW,y,colW,5.8);
-    doc.setFontSize(7);doc.setTextColor(20,20,20);
-    var lw1=doc.getTextWidth(row[0]+': '),lw2=doc.getTextWidth(row[2]+': ');
-    doc.setFont('helvetica','bold');doc.text(row[0]+': ',M+2,y+4);
-    doc.setFont('helvetica','normal');doc.text(row[1]||'',M+2+lw1,y+4);
-    doc.setFont('helvetica','bold');doc.text(row[2]+': ',M+colW+2,y+4);
-    doc.setFont('helvetica','normal');doc.text(row[3]||'',M+colW+2+lw2,y+4);
-    y+=5.8;
-  });
-  y+=4;
-  var tr=rows.slice();
-  while(tr.length<20)tr.push({name:'',qty:'',price:null,disc:null,total:null});
-  var tb=tr.map(function(r,i){
-    var bl=!r.name;
-    return[i+1,r.name,
-      bl?'':String(r.qty),
-      bl?'':(cur+' '+f2(r.price)),
-      vatR+'%',
-      bl?'0%':((r.disc||0)+'%'),
-      bl?'':(r.disc>=100?'FREE':(cur+' '+f2(r.total)))
-    ];
-  });
-  doc.autoTable({startY:y,
-    head:[['#','Naimenovanie / Opisanie tovara',
-      {content:'Qty',styles:{halign:'center'}},
-      'Price ('+cur+')',
-      {content:'NDS',styles:{halign:'center'}},
-      {content:'Skidka',styles:{halign:'center'}},
-      'Summa ('+cur+')']],
-    body:tb,margin:{left:M,right:M},
-    styles:{fontSize:7,cellPadding:1.6,font:'helvetica',textColor:[20,20,20]},
-    headStyles:{fillColor:[21,44,98],textColor:255,fontStyle:'bold',fontSize:7.5},
-    columnStyles:{
-      0:{cellWidth:8,halign:'center'},1:{cellWidth:63},
-      2:{cellWidth:13,halign:'center'},3:{cellWidth:23,halign:'right'},
-      4:{cellWidth:11,halign:'center'},5:{cellWidth:13,halign:'center'},
-      6:{cellWidth:29,halign:'right'}
-    },
-    alternateRowStyles:{fillColor:[249,251,255]}
-  });
-  y=doc.lastAutoTable.finalY+3;
-  var tW=82,tX=W-M-tW;
-  var tots=[['Itogo bez NDS:',cur+' '+f2(sub),false,false]];
-  if(vatR>0)tots.push(['NDS ('+vatR+'%):',cur+' '+f2(vatA),true,false]);
-  tots.push(['ITOGO K OPLATE ('+cur+'):',cur+' '+f2(grand),false,true]);
-  tots.forEach(function(t){
-    if(t[3]){doc.setFillColor(21,44,98);doc.setTextColor(255,255,255);}
-    else if(t[2]){doc.setFillColor(224,230,245);doc.setTextColor(20,20,20);}
-    else{doc.setFillColor(244,246,251);doc.setTextColor(20,20,20);}
-    doc.rect(tX,y,tW,6,'F');doc.setDrawColor(200,208,225);doc.rect(tX,y,tW,6);
-    doc.setFont('helvetica',t[2]||t[3]?'bold':'normal');doc.setFontSize(8);
-    doc.text(t[0],tX+3,y+4);doc.text(t[1],tX+tW-3,y+4,{align:'right'});
-    y+=6;
-  });
-  y+=6;
-  doc.setTextColor(20,20,20);doc.setFont('helvetica','bold');doc.setFontSize(8);
-  doc.text('Rekvizity dlya oplaty:',M,y);y+=5;
-  doc.setFont('helvetica','normal');doc.setFontSize(7.5);
-  doc.text('Bank: '+ginv('bank')+'   IIK: '+ginv('iik')+'   BIK: '+ginv('bik'),M,y);y+=4.5;
-  doc.text('Usloviya oplaty: Predoplata / Prepayment in advance',M,y);y+=4;
-  doc.text('Incoterms 2020: '+(ginv('delivery')||'DAP'),M,y);y+=9;
-  doc.setFontSize(6.5);doc.setTextColor(140,140,140);doc.setFont('helvetica','italic');
-  doc.text('Na vse nashi tranzaktsii rasprostranayutsya obshchie usloviya v Torgovo-promyshlennoy palate.',W/2,y,{align:'center'});
-  var fn=(ginv('buyer')||'client').replace(/[^a-zA-Z0-9]/g,'_');
-  doc.save('Invoice_'+fn+'_'+(ginv('ordnum')||'inv')+'.pdf');
+
+function printInvoice() {
   closeInvoiceModal();
+
+  // save requisites
+  try {
+    var req = {};
+    ['f-bin','f-bank','f-iik','f-bik'].forEach(function(f) {
+      req[f] = gf(f);
+    });
+    localStorage.setItem(INV_STORAGE, JSON.stringify(req));
+  } catch(e) {}
+
+  // collect data
+  var cur = gf('f-inv-currency') || 'EUR';
+  var vatR = parseFloat(gf('f-inv-vat')) || 0;
+  var fmt2 = function(n) { return parseFloat(n || 0).toFixed(2); };
+
+  var rows = [];
+  variants.forEach(function(v) {
+    v.rows.forEach(function(r) {
+      var p = parseFloat(r.price) || 0;
+      var q = parseInt(r.qty) || 1;
+      var d = parseFloat(r.discVal) || 0;
+      var t = d >= 100 ? 0 : p * q * (1 - d / 100);
+      if (r.name) rows.push({ name: r.name, qty: q, price: p, disc: d, total: t });
+    });
+  });
+
+  var sub = rows.reduce(function(s, r) { return s + r.total; }, 0);
+  var vatA = sub * vatR / 100;
+  var grand = sub + vatA;
+  var today = new Date().toLocaleDateString('ru-RU');
+
+  // build rows HTML
+  var rowsHtml = '';
+  for (var i = 0; i < 20; i++) {
+    var r = rows[i];
+    if (r) {
+      var disc = r.disc > 0 ? r.disc + '%' : '0%';
+      var total = r.disc >= 100 ? 'FREE' : (cur + ' ' + fmt2(r.total));
+      rowsHtml += '<tr><td>' + (i+1) + '</td><td class="name">' + r.name + '</td><td>' + r.qty + '</td><td>' + cur + ' ' + fmt2(r.price) + '</td><td>' + vatR + '%</td><td>' + disc + '</td><td>' + total + '</td></tr>';
+    } else {
+      rowsHtml += '<tr><td>' + (i+1) + '</td><td></td><td></td><td></td><td>' + vatR + '%</td><td>0%</td><td></td></tr>';
+    }
+  }
+
+  var vatRow = vatR > 0 ? '<tr class="vat"><td colspan="6" style="text-align:right"><b>NDS (' + vatR + '%):</b></td><td>' + cur + ' ' + fmt2(vatA) + '</td></tr>' : '';
+
+  var invoiceHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<title>Invoice</title>'
+    + '<style>'
+    + 'body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0;padding:20px}'
+    + '.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}'
+    + '.logo-box{background:#152c62;color:#fff;padding:10px 16px;border-radius:4px}'
+    + '.logo-box .big{font-size:16px;font-weight:700;letter-spacing:1px}'
+    + '.logo-box .sub{font-size:8px;opacity:.8}'
+    + '.req{text-align:right;font-size:10px;line-height:1.7}'
+    + '.req b{font-size:11px}'
+    + 'h1{text-align:center;font-size:16px;font-weight:700;color:#152c62;margin:12px 0}'
+    + '.info-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ddd;margin-bottom:14px}'
+    + '.info-cell{padding:4px 8px;border:1px solid #eee;font-size:10px}'
+    + '.info-cell b{color:#152c62}'
+    + 'table{width:100%;border-collapse:collapse;margin-bottom:8px}'
+    + 'th{background:#152c62;color:#fff;padding:5px 6px;font-size:10px;text-align:left}'
+    + 'th.r,td.r{text-align:right}'
+    + 'th.c,td.c{text-align:center}'
+    + 'td{padding:4px 6px;border-bottom:1px solid #eee;font-size:10px}'
+    + 'td.name{max-width:200px}'
+    + 'tr:nth-child(even){background:#f8f9ff}'
+    + '.totals{margin-left:auto;width:280px;border-collapse:collapse}'
+    + '.totals td{padding:4px 8px;border:1px solid #ddd;font-size:10px}'
+    + '.totals .hl{background:#152c62;color:#fff;font-weight:700}'
+    + '.totals .sub{background:#e0e6f5}'
+    + '.pay{margin-top:14px;font-size:10px;border-top:1px solid #ddd;padding-top:8px}'
+    + '.footer{margin-top:16px;font-size:8px;color:#999;text-align:center;font-style:italic;border-top:1px solid #eee;padding-top:8px}'
+    + '@media print{body{padding:10px}button{display:none}}'
+    + '</style></head><body>'
+    + '<div class="header">'
+    + '<div class="logo-box"><div class="big">AGRIPROM</div><div class="sub">total cow comfort</div></div>'
+    + '<div class="req"><b>TOO "Agriprom"</b><br>BIN: ' + gf('f-bin') + '<br>Bank: ' + gf('f-bank') + '<br>IIK: ' + gf('f-iik') + '<br>BIK: ' + gf('f-bik') + '</div>'
+    + '</div>'
+    + '<h1>SCHET-FAKTURA / INVOICE</h1>'
+    + '<div class="info-grid">'
+    + '<div class="info-cell"><b>Nomer zakaza:</b> ' + gf('f-ordnum') + '</div>'
+    + '<div class="info-cell"><b>Pokupatel:</b> ' + gf('f-buyer') + '</div>'
+    + '<div class="info-cell"><b>Data:</b> ' + today + '</div>'
+    + '<div class="info-cell"><b>Nomer debitora:</b> ' + gf('f-debnum') + '</div>'
+    + '<div class="info-cell"><b>Prodavets:</b> ' + gf('f-seller') + '</div>'
+    + '<div class="info-cell"><b>Referens klienta:</b> ' + gf('f-ref') + '</div>'
+    + '<div class="info-cell"><b>Opisanie/Truck:</b> ' + gf('f-truck') + '</div>'
+    + '<div class="info-cell"><b>Usloviya postavki:</b> ' + gf('f-delivery') + '</div>'
+    + '<div class="info-cell" style="grid-column:1/-1"><b>Adres dostavki:</b> ' + gf('f-address') + '&nbsp;&nbsp;&nbsp;<b>Primechaniya:</b> ' + gf('f-invnotes') + '</div>'
+    + '</div>'
+    + '<table>'
+    + '<tr><th style="width:28px">&#8470;</th><th>Naimenovanie / Opisanie tovara</th><th class="c" style="width:40px">Qty</th><th class="r" style="width:80px">Price (' + cur + ')</th><th class="c" style="width:36px">NDS</th><th class="c" style="width:44px">Skidka</th><th class="r" style="width:80px">Summa (' + cur + ')</th></tr>'
+    + rowsHtml
+    + '</table>'
+    + '<table class="totals">'
+    + '<tr><td style="text-align:right"><b>Itogo bez NDS:</b></td><td>' + cur + ' ' + fmt2(sub) + '</td></tr>'
+    + vatRow
+    + '<tr class="hl"><td style="text-align:right">ITOGO K OPLATE (' + cur + '):</td><td>' + cur + ' ' + fmt2(grand) + '</td></tr>'
+    + '</table>'
+    + '<div class="pay"><b>Rekvizity dlya oplaty:</b> Bank: ' + gf('f-bank') + ' &nbsp; IIK: ' + gf('f-iik') + ' &nbsp; BIK: ' + gf('f-bik') + '<br>'
+    + 'Usloviya oplaty: Predoplata / Prepayment in advance &nbsp;&nbsp; Incoterms 2020: ' + (gf('f-delivery') || 'DAP') + '</div>'
+    + '<div class="footer">Na vse nashi tranzaktsii rasprostranayutsya obshchie usloviya zaregistrirovannye v Torgovo-promyshlennoy palate.</div>'
+    + '</body></html>';
+
+  var w = window.open('', '_blank', 'width=900,height=700');
+  w.document.write(invoiceHtml);
+  w.document.close();
+  w.focus();
+  setTimeout(function() { w.print(); }, 800);
 }
 
 </script>
