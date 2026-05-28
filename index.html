@@ -282,7 +282,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
 .inv-box h2{font-size:16px;color:#152c62;margin-bottom:10px}
 .inv-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
 .inv-btns button{padding:9px 22px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none}
-.inv-ok{background:#152c62;color:#fff}.inv-cancel{background:#f0f2f7;color:#152c62}
+.inv-ok{background:#152c62;color:#fff}
+.inv-cancel{background:#f0f2f7;color:#152c62}
 </style>
 </head>
 <body>
@@ -308,7 +309,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
     <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
     Сохранить PDF
   </button>
-  <button class="btn-invoice" id="inv-open-btn">Invoice PDF</button>
+  <button class="btn-invoice" onclick="doInvoice()">Invoice PDF</button>
   </div>
 </div>
 
@@ -1641,9 +1642,7 @@ function doPrint(){
   </head><body>
     ${kpHTML}
     \x3cscript\x3ewindow.onload=function(){window.print()};\x3c\/script\x3e
-  
-<div class="inv-overlay" id="inv-overlay"><div class="inv-box"><h2>Invoice PDF</h2><p style="font-size:13px;color:#666;margin-bottom:12px">Данные из сайдбара. Всё заполнено?</p><div class="inv-btns"><button class="inv-cancel" id="inv-cancel-btn">Отмена</button><button class="inv-ok" id="inv-print-btn">Создать PDF</button></div></div></div>
-</body></html>`;
+  </body></html>`;
   const blob=new Blob([printDoc],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const win=window.open(url,'_blank');
@@ -1673,55 +1672,101 @@ try{
 }catch(e){}
 renderList();
 $('kp-date').textContent=today();
-</script>
-</body>
-</html>
-<script>
-(function(){
-var K='inv8';
-function g(id){var e=document.getElementById(id);return e?e.value:'';}
-function open_inv(){
-  try{var s=JSON.parse(localStorage.getItem(K)||'{}');['f-bin','f-bank','f-iik','f-bik'].forEach(function(f){var e=document.getElementById(f);if(e&&s[f])e.value=s[f];});}catch(e){}
-  if(!g('f-seller')){var m=document.getElementById('f-mgr');var s2=document.getElementById('f-seller');if(m&&s2)s2.value=m.value;}
-  if(!g('f-buyer')){var fm=document.getElementById('f-farm');var b=document.getElementById('f-buyer');if(fm&&b)b.value=fm.value;}
-  document.getElementById('inv-overlay').classList.add('open');
-}
-function close_inv(){document.getElementById('inv-overlay').classList.remove('open');}
-function print_inv(){
-  close_inv();
-  try{var r={};['f-bin','f-bank','f-iik','f-bik'].forEach(function(f){r[f]=g(f);});localStorage.setItem(K,JSON.stringify(r));}catch(e){}
+
+function doInvoice(){
+  var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
   var cur=g('f-inv-cur')||'EUR';
   var vr=parseFloat(g('f-inv-vat'))||0;
   var f2=function(n){return parseFloat(n||0).toFixed(2);};
   var today=new Date().toLocaleDateString('ru-RU');
   var rows=[];
-  if(typeof variants!=='undefined'){variants.forEach(function(v){v.rows.forEach(function(r){var p=parseFloat(r.price)||0,q=parseInt(r.qty)||1,d=parseFloat(r.discVal)||0,t=d>=100?0:p*q*(1-d/100);if(r.name)rows.push({name:r.name,qty:q,price:p,disc:d,total:t});});});}
+  variants.forEach(function(v){
+    v.rows.forEach(function(r){
+      var p=parseFloat(r.price)||0,q=parseInt(r.qty)||1,d=parseFloat(r.discVal)||0;
+      var t=d>=100?0:p*q*(1-d/100);
+      if(r.name)rows.push({name:r.name,qty:q,price:p,disc:d,total:t});
+    });
+  });
   var sub=rows.reduce(function(s,r){return s+r.total;},0),va=sub*vr/100,grand=sub+va;
   var rh='';
-  for(var i=0;i<20;i++){var r=rows[i];if(r){rh+='<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td>'+r.qty+'</td><td>'+cur+' '+f2(r.price)+'</td><td>'+vr+'%</td><td>'+(r.disc||0)+'%</td><td>'+(r.disc>=100?'FREE':cur+' '+f2(r.total))+'</td></tr>';}else{rh+='<tr><td>'+(i+1)+'</td><td></td><td></td><td></td><td>'+vr+'%</td><td>0%</td><td></td></tr>';}}
-  var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:11px;margin:20px}.hdr{display:flex;justify-content:space-between;margin-bottom:12px}.logo{background:#152c62;color:#fff;padding:8px 14px;border-radius:3px}.logo b{font-size:15px;display:block}.logo small{font-size:8px;opacity:.7}.req{text-align:right;font-size:10px;line-height:1.8}h1{text-align:center;font-size:15px;color:#152c62;margin:10px 0}.info{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ccc;margin-bottom:12px}.ic{padding:3px 7px;border:1px solid #eee;font-size:10px}.ic b{color:#152c62}table{width:100%;border-collapse:collapse}th{background:#152c62;color:#fff;padding:4px 5px;text-align:left}td{padding:3px 5px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f5f7ff}.tots{margin:8px 0 0 auto;width:260px;border-collapse:collapse}.tots td{padding:3px 7px;border:1px solid #ddd;font-size:10px}.hl{background:#152c62!important;color:#fff!important;font-weight:700}.sub{background:#dce5f5}.pay{margin-top:12px;font-size:10px;border-top:1px solid #ccc;padding-top:7px}.ft{margin-top:14px;font-size:8px;color:#aaa;text-align:center;font-style:italic}</style></head><body>'
-    +'<div class="hdr"><div class="logo"><b>AGRIPROM</b><small>total cow comfort</small></div><div class="req"><b>TOO "Agriprom"</b><br>BIN: '+g('f-bin')+'<br>Bank: '+g('f-bank')+'<br>IIK: '+g('f-iik')+'<br>BIK: '+g('f-bik')+'</div></div>'
-    +'<h1>SCHET-FAKTURA / INVOICE</h1>'
-    +'<div class="info"><div class="ic"><b>Nomer zakaza:</b> '+g('f-ordnum')+'</div><div class="ic"><b>Pokupatel:</b> '+g('f-buyer')+'</div><div class="ic"><b>Data:</b> '+today+'</div><div class="ic"><b>Nomer debitora:</b> '+g('f-debnum')+'</div><div class="ic"><b>Prodavets:</b> '+g('f-seller')+'</div><div class="ic"><b>Referens:</b> '+g('f-ref')+'</div><div class="ic"><b>Opisanie/Truck:</b> '+g('f-truck')+'</div><div class="ic"><b>Usloviya:</b> '+g('f-delivery')+'</div><div class="ic" style="grid-column:1/-1"><b>Adres:</b> '+g('f-address')+' &nbsp;<b>Prim.:</b> '+g('f-invnotes')+'</div></div>'
-    +'<table><tr><th>#</th><th>Naimenovanie</th><th>Qty</th><th>Price</th><th>NDS</th><th>Skidka</th><th>Summa</th></tr>'+rh+'</table>'
-    +'<table class="tots"><tr><td style="text-align:right"><b>Itogo bez NDS:</b></td><td>'+cur+' '+f2(sub)+'</td></tr>'+(vr>0?'<tr class="sub"><td style="text-align:right"><b>NDS ('+vr+'%):</b></td><td>'+cur+' '+f2(va)+'</td></tr>':'')+'<tr class="hl"><td style="text-align:right">ITOGO K OPLATE:</td><td>'+cur+' '+f2(grand)+'</td></tr></table>'
-    +'<div class="pay">Bank: '+g('f-bank')+' | IIK: '+g('f-iik')+' | BIK: '+g('f-bik')+'<br>Usloviya oplaty: Predoplata | Incoterms 2020: '+(g('f-delivery')||'DAP')+'</div>'
-    +'<div class="ft">Na vse nashi tranzaktsii rasprostranayutsya obshchie usloviya v Torgovo-promyshlennoy palate.</div>'
+  for(var i=0;i<20;i++){
+    var r=rows[i];
+    if(r){rh+='<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td style="text-align:center">'+r.qty+'</td><td style="text-align:right">'+cur+' '+f2(r.price)+'</td><td style="text-align:center">'+vr+'%</td><td style="text-align:center">'+(r.disc||0)+'%</td><td style="text-align:right">'+(r.disc>=100?'\u0411\u0415\u0421\u041f\u041b\u0410\u0422\u041d\u041e':cur+' '+f2(r.total))+'</td></tr>';}
+    else{rh+='<tr><td>'+(i+1)+'</td><td></td><td></td><td></td><td style="text-align:center">'+vr+'%</td><td style="text-align:center">0%</td><td></td></tr>';}
+  }
+  var vatRow=vr>0?'<tr style="background:#dce5f5"><td colspan="6" style="text-align:right"><b>\u041d\u0414\u0421 ('+vr+'%):</b></td><td style="text-align:right">'+cur+' '+f2(va)+'</td></tr>':'';
+  var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+    +'body{font-family:Arial,sans-serif;font-size:11px;margin:20px;color:#111}'
+    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}'
+    +'.logo{background:#152c62;color:#fff;padding:10px 16px;border-radius:4px;min-width:140px}'
+    +'.logo b{font-size:16px;display:block;letter-spacing:1px}'
+    +'.logo small{font-size:8px;opacity:.75}'
+    +'.req{text-align:right;font-size:9.5px;line-height:1.85;color:#333}'
+    +'.req b{font-size:11px;color:#152c62;display:block;margin-bottom:2px}'
+    +'h1{text-align:center;font-size:16px;font-weight:700;color:#152c62;margin:14px 0;letter-spacing:.5px}'
+    +'.info{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ccc;margin-bottom:14px;border-radius:2px}'
+    +'.ic{padding:4px 9px;border:1px solid #eee;font-size:10px}'
+    +'.ic b{color:#152c62}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:10px}'
+    +'th{background:#152c62;color:#fff;padding:5px 7px;text-align:left;font-size:10px}'
+    +'th.r,td.r{text-align:right}'
+    +'th.c,td.c{text-align:center}'
+    +'td{padding:4px 7px;border-bottom:1px solid #eee;font-size:10px}'
+    +'tr:nth-child(even) td{background:#f8f9ff}'
+    +'.tots{margin-left:auto;width:290px;border-collapse:collapse}'
+    +'.tots td{padding:4px 9px;border:1px solid #ddd;font-size:10px}'
+    +'.hl td{background:#152c62!important;color:#fff!important;font-weight:700}'
+    +'.vat td{background:#dce5f5}'
+    +'.pay{margin-top:12px;font-size:10px;border-top:2px solid #152c62;padding-top:8px}'
+    +'.ft{margin-top:16px;font-size:8px;color:#999;text-align:center;font-style:italic;border-top:1px solid #eee;padding-top:8px}'
+    +'@media print{body{margin:10px}}'
+    +'</style></head><body>'
+    +'<div class="hdr">'
+    +'<div class="logo"><b>AGRIPROM</b><small>total cow comfort</small></div>'
+    +'<div class="req">'
+    +'<b>Agriprom Stalmatten B.V</b>'
+    +'De Grift 7, 7711 EP, Nieuwleusen<br>'
+    +'The Netherlands<br>'
+    +'KvK: &nbsp;&nbsp; Tel.: +31 529 455320<br>'
+    +'Fax: +31 529 455315<br>'
+    +'IBAN: NL68 RABO 0129 4456 22<br>'
+    +'SWIFT: RABO NL2U'
+    +'</div>'
+    +'</div>'
+    +'<h1>\u0421\u0427\u0401\u0422-\u0424\u0410\u041a\u0422\u0423\u0420\u0410 / INVOICE</h1>'
+    +'<div class="info">'
+    +'<div class="ic"><b>\u041d\u043e\u043c\u0435\u0440 \u0437\u0430\u043a\u0430\u0437\u0430:</b> '+g('f-ordnum')+'</div>'
+    +'<div class="ic"><b>\u041f\u043e\u043a\u0443\u043f\u0430\u0442\u0435\u043b\u044c:</b> '+g('f-buyer')+'</div>'
+    +'<div class="ic"><b>\u0414\u0430\u0442\u0430:</b> '+today+'</div>'
+    +'<div class="ic"><b>\u041d\u043e\u043c\u0435\u0440 \u0434\u0435\u0431\u0438\u0442\u043e\u0440\u0430:</b> '+g('f-debnum')+'</div>'
+    +'<div class="ic"><b>\u041f\u0440\u043e\u0434\u0430\u0432\u0435\u0446:</b> '+g('f-seller')+'</div>'
+    +'<div class="ic"><b>\u0420\u0435\u0444\u0435\u0440\u0435\u043d\u0441 \u043a\u043b\u0438\u0435\u043d\u0442\u0430:</b> '+g('f-ref')+'</div>'
+    +'<div class="ic"><b>\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 / Truck \u2116:</b> '+g('f-truck')+'</div>'
+    +'<div class="ic"><b>\u0423\u0441\u043b\u043e\u0432\u0438\u044f \u043f\u043e\u0441\u0442\u0430\u0432\u043a\u0438:</b> '+g('f-delivery')+'</div>'
+    +'<div class="ic" style="grid-column:1/-1"><b>\u0410\u0434\u0440\u0435\u0441 \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0438:</b> '+g('f-address')+'&nbsp;&nbsp;&nbsp;<b>\u041f\u0440\u0438\u043c\u0435\u0447\u0430\u043d\u0438\u044f:</b> '+g('f-invnotes')+'</div>'
+    +'</div>'
+    +'<table>'
+    +'<tr><th style="width:28px">\u2116</th><th>\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435 / \u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0442\u043e\u0432\u0430\u0440\u0430</th>'
+    +'<th class="c" style="width:44px">\u041a\u043e\u043b-\u0432\u043e</th>'
+    +'<th class="r" style="width:90px">\u0426\u0435\u043d\u0430 ('+cur+')</th>'
+    +'<th class="c" style="width:38px">\u041d\u0414\u0421</th>'
+    +'<th class="c" style="width:50px">\u0421\u043a\u0438\u0434\u043a\u0430</th>'
+    +'<th class="r" style="width:90px">\u0421\u0443\u043c\u043c\u0430 ('+cur+')</th></tr>'
+    +rh
+    +'</table>'
+    +'<table class="tots">'
+    +'<tr><td style="text-align:right"><b>\u0418\u0442\u043e\u0433\u043e \u0431\u0435\u0437 \u041d\u0414\u0421:</b></td><td style="text-align:right">'+cur+' '+f2(sub)+'</td></tr>'
+    +vatRow
+    +'<tr class="hl"><td style="text-align:right">\u0418\u0422\u041e\u0413\u041e \u041a \u041e\u041f\u041b\u0410\u0422\u0415 ('+cur+'):</td><td style="text-align:right">'+cur+' '+f2(grand)+'</td></tr>'
+    +'</table>'
+    +'<div class="pay"><b>\u0420\u0435\u043a\u0432\u0438\u0437\u0438\u0442\u044b \u0434\u043b\u044f \u043e\u043f\u043b\u0430\u0442\u044b:</b><br>'
+    +'\u0411\u0430\u043d\u043a: '+g('f-bank')+'&nbsp;&nbsp;\u0418\u0418\u041a: '+g('f-iik')+'&nbsp;&nbsp;\u0411\u0418\u041a: '+g('f-bik')+'<br>'
+    +'\u0423\u0441\u043b\u043e\u0432\u0438\u044f \u043e\u043f\u043b\u0430\u0442\u044b: \u041f\u0440\u0435\u0434\u043e\u043f\u043b\u0430\u0442\u0430 / Prepayment in advance&nbsp;&nbsp;Incoterms 2020: '+(g('f-delivery')||'DAP')+'</div>'
+    +'<div class="ft">\u041d\u0430 \u0432\u0441\u0435 \u043d\u0430\u0448\u0438 \u0442\u0440\u0430\u043d\u0437\u0430\u043a\u0446\u0438\u0438 \u0440\u0430\u0441\u043f\u0440\u043e\u0441\u0442\u0440\u0430\u043d\u044f\u044e\u0442\u0441\u044f \u043e\u0431\u0449\u0438\u0435 \u0443\u0441\u043b\u043e\u0432\u0438\u044f, \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0435 \u0432 \u0422\u043e\u0440\u0433\u043e\u0432\u043e-\u043f\u0440\u043e\u043c\u044b\u0448\u043b\u0435\u043d\u043d\u043e\u0439 \u043f\u0430\u043b\u0430\u0442\u0435.</div>'
     +'</body></html>';
   var w=window.open('','_blank');
-  if(!w){alert('Please allow popups');return;}
-  w.document.write(doc);w.document.close();
-  setTimeout(function(){w.print();},500);
+  if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},600);}
 }
-document.addEventListener('DOMContentLoaded',function(){
-  var ob=document.getElementById('inv-open-btn');
-  var cb=document.getElementById('inv-cancel-btn');
-  var pb=document.getElementById('inv-print-btn');
-  var ov=document.getElementById('inv-overlay');
-  if(ob)ob.addEventListener('click',open_inv);
-  if(cb)cb.addEventListener('click',close_inv);
-  if(pb)pb.addEventListener('click',print_inv);
-  if(ov)ov.addEventListener('click',function(e){if(e.target===this)close_inv();});
-});
-})();
 </script>
+</body>
+</html>
