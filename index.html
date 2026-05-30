@@ -276,14 +276,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
 
 .btn-invoice{background:#1a7a4a;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px}
 .btn-invoice:hover{opacity:.88}
-.inv-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}
-.inv-overlay.open{display:flex}
-.inv-box{background:#fff;border-radius:12px;padding:28px;width:460px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.2)}
-.inv-box h2{font-size:16px;color:#152c62;margin-bottom:10px}
-.inv-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
-.inv-btns button{padding:9px 22px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none}
-.inv-ok{background:#152c62;color:#fff}
-.inv-cancel{background:#f0f2f7;color:#152c62}
 </style>
 </head>
 <body>
@@ -365,6 +357,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
         </div>
         <div class="fl"><label>Примечание</label><textarea id="f-note" placeholder="Особые условия..." oninput="render()"></textarea></div>
         <div class="sb-hdr no-print" style="margin-top:12px">Invoice</div>
+        <div class="fl no-print">
+          <label>Реквизиты компании</label>
+          <select id="f-req-type" onchange="fillRequisites(this.value)" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit">
+            <option value="nl">NL | Agriprom Stalmatten B.V</option>
+            <option value="kz">KZ | ТОО Agriprom</option>
+            <option value="manual">Вручную</option>
+          </select>
+        </div>
+        <div class="fl no-print"><label>Название компании</label><input id="f-company-name"></div>
+        <div class="fl no-print"><label>Адрес компании</label><input id="f-company-addr"></div>
+        <div class="fl no-print"><label>Контакты</label><input id="f-company-contact"></div>
         <div class="fl no-print"><label>Номер заказа</label><input id="f-ordnum" placeholder="2025-001"></div>
         <div class="fl no-print"><label>Покупатель</label><input id="f-buyer"></div>
         <div class="fl no-print"><label>Ном. дебитора</label><input id="f-debnum"></div>
@@ -374,10 +377,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8edf5;color:var(--
         <div class="fl no-print"><label>Усл. поставки</label><input id="f-delivery" value="DAP"></div>
         <div class="fl no-print"><label>Адрес</label><input id="f-address"></div>
         <div class="fl no-print"><label>Примечания</label><input id="f-invnotes"></div>
-        <div class="fl no-print"><label>БИН</label><input id="f-bin" placeholder="123456789012"></div>
-        <div class="fl no-print"><label>Банк</label><input id="f-bank"></div>
-        <div class="fl no-print"><label>ИИК</label><input id="f-iik"></div>
-        <div class="fl no-print"><label>БИК</label><input id="f-bik"></div>
+        <div class="fl no-print">
+          <label>Реквизиты для оплаты</label>
+          <textarea id="f-pay-details" rows="4" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;font-family:inherit;resize:vertical"></textarea>
+        </div>
         <div class="fl no-print"><label>NDS %</label><input id="f-inv-vat" type="number" value="0" min="0" max="100"></div>
         <div class="fl no-print"><label>Валюта</label><select id="f-inv-cur"><option value="EUR">EUR</option><option value="USD">USD</option><option value="KZT">KZT</option></select></div>
 
@@ -1672,6 +1675,25 @@ try{
 }catch(e){}
 renderList();
 $('kp-date').textContent=today();
+fillRequisites('nl');
+
+function fillRequisites(type){
+  var cn=document.getElementById('f-company-name');
+  var ca=document.getElementById('f-company-addr');
+  var cc=document.getElementById('f-company-contact');
+  var pd=document.getElementById('f-pay-details');
+  if(type==='nl'){
+    if(cn)cn.value='Agriprom Stalmatten B.V';
+    if(ca)ca.value='De Grift 7, 7711 EP, Nieuwleusen, The Netherlands';
+    if(cc)cc.value='KvK: 05061635 | Tel.: +31 529 455320 | Fax: +31 529 455315 | Email: info@agriprom.nl';
+    if(pd)pd.value='Rabobank\nAccount: 12 94 45 622\nIBAN: NL68 RABO 0129 4456 22\nSWIFT: RABO NL2U';
+  } else if(type==='kz'){
+    if(cn)cn.value='\u0422\u041e\u041e "AGRIPROM"';
+    if(ca)ca.value='\u041a\u0430\u0437\u0430\u0445\u0441\u0442\u0430\u043d, \u0433. \u0410\u0441\u0442\u0430\u043d\u0430, \u0443\u043b. \u0411\u0435\u0439\u0431\u044b\u0442\u0448\u044b\u043b\u044b\u043a, \u0441\u0442\u0440. 14, \u043e\u0444. 909';
+    if(cc)cc.value='\u0411\u0418\u041d/\u0418\u0418\u041d: 221040039303 | \u041a\u0411\u0435: 17';
+    if(pd)pd.value='\u0411\u0430\u043d\u043a: \u0410\u041e \u00ab\u0411\u0430\u043d\u043a \u0426\u0435\u043d\u0442\u0440\u041a\u0440\u0435\u0434\u0438\u0442\u00bb\n\u0421\u0447\u0451\u0442: KZ74 8562 2031 2631 3789\n\u0411\u0418\u041a: KCJBKZKX\n\u0412\u0430\u043b\u044e\u0442\u0430: KZT';
+  }
+}
 
 function doInvoice(){
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
@@ -1695,43 +1717,39 @@ function doInvoice(){
     else{rh+='<tr><td>'+(i+1)+'</td><td></td><td></td><td></td><td style="text-align:center">'+vr+'%</td><td style="text-align:center">0%</td><td></td></tr>';}
   }
   var vatRow=vr>0?'<tr style="background:#dce5f5"><td colspan="6" style="text-align:right"><b>\u041d\u0414\u0421 ('+vr+'%):</b></td><td style="text-align:right">'+cur+' '+f2(va)+'</td></tr>':'';
+  var compName=g('f-company-name')||'Agriprom Stalmatten B.V';
+  var compAddr=g('f-company-addr')||'De Grift 7, 7711 EP, Nieuwleusen';
+  var compContact=g('f-company-contact')||'';
+  var payDetails=(g('f-pay-details')||'').replace(/\n/g,'<br>');
   var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
-    +'body{font-family:Arial,sans-serif;font-size:11px;margin:20px;color:#111}'
-    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}'
-    +'.logo{background:#152c62;color:#fff;padding:10px 16px;border-radius:4px;min-width:140px}'
+    +'*{box-sizing:border-box}'
+    +'body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:20px;color:#111}'
+    +'@page{size:A4;margin:0}'
+    +'@media print{body{padding:15mm}header,footer{display:none!important}}'
+    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #152c62}'
+    +'.logo{background:#152c62;color:#fff;padding:10px 16px;border-radius:4px}'
     +'.logo b{font-size:16px;display:block;letter-spacing:1px}'
     +'.logo small{font-size:8px;opacity:.75}'
-    +'.req{text-align:right;font-size:9.5px;line-height:1.85;color:#333}'
-    +'.req b{font-size:11px;color:#152c62;display:block;margin-bottom:2px}'
-    +'h1{text-align:center;font-size:16px;font-weight:700;color:#152c62;margin:14px 0;letter-spacing:.5px}'
-    +'.info{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ccc;margin-bottom:14px;border-radius:2px}'
-    +'.ic{padding:4px 9px;border:1px solid #eee;font-size:10px}'
+    +'.req{text-align:right;font-size:9.5px;line-height:1.85;color:#333;max-width:300px}'
+    +'.req b{font-size:11px;color:#152c62;display:block;margin-bottom:3px}'
+    +'h1{text-align:center;font-size:16px;font-weight:700;color:#152c62;margin:14px 0}'
+    +'.info{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ccc;margin-bottom:14px}'
+    +'.ic{padding:5px 9px;border:1px solid #eee;font-size:10px}'
     +'.ic b{color:#152c62}'
     +'table{width:100%;border-collapse:collapse;margin-bottom:10px}'
     +'th{background:#152c62;color:#fff;padding:5px 7px;text-align:left;font-size:10px}'
-    +'th.r,td.r{text-align:right}'
-    +'th.c,td.c{text-align:center}'
+    +'th.r,td.r{text-align:right}th.c,td.c{text-align:center}'
     +'td{padding:4px 7px;border-bottom:1px solid #eee;font-size:10px}'
     +'tr:nth-child(even) td{background:#f8f9ff}'
     +'.tots{margin-left:auto;width:290px;border-collapse:collapse}'
     +'.tots td{padding:4px 9px;border:1px solid #ddd;font-size:10px}'
     +'.hl td{background:#152c62!important;color:#fff!important;font-weight:700}'
-    +'.vat td{background:#dce5f5}'
-    +'.pay{margin-top:12px;font-size:10px;border-top:2px solid #152c62;padding-top:8px}'
+    +'.pay{margin-top:14px;font-size:10px;border-top:2px solid #152c62;padding-top:10px}'
     +'.ft{margin-top:16px;font-size:8px;color:#999;text-align:center;font-style:italic;border-top:1px solid #eee;padding-top:8px}'
-    +'@media print{body{margin:10px}}'
     +'</style></head><body>'
     +'<div class="hdr">'
     +'<div class="logo"><b>AGRIPROM</b><small>total cow comfort</small></div>'
-    +'<div class="req">'
-    +'<b>Agriprom Stalmatten B.V</b>'
-    +'De Grift 7, 7711 EP, Nieuwleusen<br>'
-    +'The Netherlands<br>'
-    +'KvK: &nbsp;&nbsp; Tel.: +31 529 455320<br>'
-    +'Fax: +31 529 455315<br>'
-    +'IBAN: NL68 RABO 0129 4456 22<br>'
-    +'SWIFT: RABO NL2U'
-    +'</div>'
+    +'<div class="req"><b>'+compName+'</b>'+compAddr+'<br>'+compContact+'</div>'
     +'</div>'
     +'<h1>\u0421\u0427\u0401\u0422-\u0424\u0410\u041a\u0422\u0423\u0420\u0410 / INVOICE</h1>'
     +'<div class="info">'
@@ -1740,28 +1758,26 @@ function doInvoice(){
     +'<div class="ic"><b>\u0414\u0430\u0442\u0430:</b> '+today+'</div>'
     +'<div class="ic"><b>\u041d\u043e\u043c\u0435\u0440 \u0434\u0435\u0431\u0438\u0442\u043e\u0440\u0430:</b> '+g('f-debnum')+'</div>'
     +'<div class="ic"><b>\u041f\u0440\u043e\u0434\u0430\u0432\u0435\u0446:</b> '+g('f-seller')+'</div>'
-    +'<div class="ic"><b>\u0420\u0435\u0444\u0435\u0440\u0435\u043d\u0441 \u043a\u043b\u0438\u0435\u043d\u0442\u0430:</b> '+g('f-ref')+'</div>'
+    +'<div class="ic"><b>\u0420\u0435\u0444\u0435\u0440\u0435\u043d\u0441:</b> '+g('f-ref')+'</div>'
     +'<div class="ic"><b>\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 / Truck \u2116:</b> '+g('f-truck')+'</div>'
     +'<div class="ic"><b>\u0423\u0441\u043b\u043e\u0432\u0438\u044f \u043f\u043e\u0441\u0442\u0430\u0432\u043a\u0438:</b> '+g('f-delivery')+'</div>'
-    +'<div class="ic" style="grid-column:1/-1"><b>\u0410\u0434\u0440\u0435\u0441 \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0438:</b> '+g('f-address')+'&nbsp;&nbsp;&nbsp;<b>\u041f\u0440\u0438\u043c\u0435\u0447\u0430\u043d\u0438\u044f:</b> '+g('f-invnotes')+'</div>'
+    +'<div class="ic" style="grid-column:1/-1"><b>\u0410\u0434\u0440\u0435\u0441:</b> '+g('f-address')+'&nbsp;&nbsp;<b>\u041f\u0440\u0438\u043c.:</b> '+g('f-invnotes')+'</div>'
     +'</div>'
     +'<table>'
-    +'<tr><th style="width:28px">\u2116</th><th>\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435 / \u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0442\u043e\u0432\u0430\u0440\u0430</th>'
+    +'<tr><th style="width:28px">\u2116</th><th>\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435</th>'
     +'<th class="c" style="width:44px">\u041a\u043e\u043b-\u0432\u043e</th>'
     +'<th class="r" style="width:90px">\u0426\u0435\u043d\u0430 ('+cur+')</th>'
     +'<th class="c" style="width:38px">\u041d\u0414\u0421</th>'
     +'<th class="c" style="width:50px">\u0421\u043a\u0438\u0434\u043a\u0430</th>'
     +'<th class="r" style="width:90px">\u0421\u0443\u043c\u043c\u0430 ('+cur+')</th></tr>'
-    +rh
-    +'</table>'
+    +rh+'</table>'
     +'<table class="tots">'
     +'<tr><td style="text-align:right"><b>\u0418\u0442\u043e\u0433\u043e \u0431\u0435\u0437 \u041d\u0414\u0421:</b></td><td style="text-align:right">'+cur+' '+f2(sub)+'</td></tr>'
     +vatRow
     +'<tr class="hl"><td style="text-align:right">\u0418\u0422\u041e\u0413\u041e \u041a \u041e\u041f\u041b\u0410\u0422\u0415 ('+cur+'):</td><td style="text-align:right">'+cur+' '+f2(grand)+'</td></tr>'
     +'</table>'
-    +'<div class="pay"><b>\u0420\u0435\u043a\u0432\u0438\u0437\u0438\u0442\u044b \u0434\u043b\u044f \u043e\u043f\u043b\u0430\u0442\u044b:</b><br>'
-    +'\u0411\u0430\u043d\u043a: '+g('f-bank')+'&nbsp;&nbsp;\u0418\u0418\u041a: '+g('f-iik')+'&nbsp;&nbsp;\u0411\u0418\u041a: '+g('f-bik')+'<br>'
-    +'\u0423\u0441\u043b\u043e\u0432\u0438\u044f \u043e\u043f\u043b\u0430\u0442\u044b: \u041f\u0440\u0435\u0434\u043e\u043f\u043b\u0430\u0442\u0430 / Prepayment in advance&nbsp;&nbsp;Incoterms 2020: '+(g('f-delivery')||'DAP')+'</div>'
+    +'<div class="pay"><b>\u0420\u0435\u043a\u0432\u0438\u0437\u0438\u0442\u044b \u0434\u043b\u044f \u043e\u043f\u043b\u0430\u0442\u044b:</b><br>'+payDetails+'<br><br>'
+    +'\u0423\u0441\u043b\u043e\u0432\u0438\u044f: \u041f\u0440\u0435\u0434\u043e\u043f\u043b\u0430\u0442\u0430 / Prepayment in advance | Incoterms 2020: '+(g('f-delivery')||'DAP')+'</div>'
     +'<div class="ft">\u041d\u0430 \u0432\u0441\u0435 \u043d\u0430\u0448\u0438 \u0442\u0440\u0430\u043d\u0437\u0430\u043a\u0446\u0438\u0438 \u0440\u0430\u0441\u043f\u0440\u043e\u0441\u0442\u0440\u0430\u043d\u044f\u044e\u0442\u0441\u044f \u043e\u0431\u0449\u0438\u0435 \u0443\u0441\u043b\u043e\u0432\u0438\u044f, \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0435 \u0432 \u0422\u043e\u0440\u0433\u043e\u0432\u043e-\u043f\u0440\u043e\u043c\u044b\u0448\u043b\u0435\u043d\u043d\u043e\u0439 \u043f\u0430\u043b\u0430\u0442\u0435.</div>'
     +'</body></html>';
   var w=window.open('','_blank');
